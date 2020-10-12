@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Input, Icon, Button } from 'react-native-elements';
 import { size, isEmpty } from 'lodash';
-import * as firebase from 'firebase'
+import * as firebase from 'firebase';
 import { useNavigation } from '@react-navigation/native';
 
 import { validateEmail } from '../../utils/validations';
-import Loading from '../../components/Loading'
+import Loading from '../../components/Loading';
 
 
 export default function LoginForm(props) {

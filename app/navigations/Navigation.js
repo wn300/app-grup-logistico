@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Icon } from 'react-native-elements'
 
-import VisitsStack from './VisitsStack';
+import ReportsStack from './ReportsStack';
 import AccountStack from './AccountStack';
 
 const Tab = createBottomTabNavigator();
@@ -12,7 +12,7 @@ export default function Navigation() {
     return (
         <NavigationContainer>
             <Tab.Navigator
-                initialRouteName='visits'
+                initialRouteName='Reports'
                 tabBarOptions={{
                     inactiveTintColor: '#646464',
                     activeTintColor: '#00a680'
@@ -22,9 +22,9 @@ export default function Navigation() {
                 })}
             >
                 <Tab.Screen
-                    name="visits"
-                    component={VisitsStack}
-                    options={{ title: 'Visitas' }}
+                    name="reports"
+                    component={ReportsStack}
+                    options={{ title: 'Reportes' }}
                 />
                 <Tab.Screen
                     name="account"
@@ -39,7 +39,7 @@ function screenOptions(route, color) {
     let iconName;
 
     switch (route.name) {
-        case 'visits':
+        case 'reports':
             iconName = 'compass-outline'
             break;
         case 'account':

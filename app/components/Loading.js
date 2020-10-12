@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     text: {
-        color: '#001680',
+        color: '#00a680',
         textTransform: 'uppercase',
         marginTop: 10
     }
