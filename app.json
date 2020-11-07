@@ -28,7 +28,13 @@
         "LOCATION",
         "ACCESS_CDARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.wdavid93.applogistica",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBwltIGAzloawHYjniNXYmca1TOpHuaoGc"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

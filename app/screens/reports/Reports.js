@@ -1,23 +1,32 @@
 
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView } from 'react-native';
 import { Button } from 'react-native-elements';
 
 export default function Reports(props) {
-    const { navigation } = props;
+    const [reportAppendEntry, setReportAppendEntry] = useState(null);
+
+    const { navigation, route } = props;
+
+    useEffect(() => {
+        const params = route.params;
+        if (params) {
+            if (params.type === 'Llegada' || params.type === 'Salida') setReportAppendEntry(params.uid)
+        }
+    }, [route.params])
 
     return (
         <ScrollView
             centerContent={true}
             style={styles.viewBody}
         >
-
             <View style={styles.viewBtn}>
                 <Button
                     title='Llegada'
                     titleStyle={styles.titleBtnStyle}
                     buttonStyle={styles.btnStyle}
                     containerStyle={styles.btnContainer}
+                    disabled={reportAppendEntry !== null}
                     onPress={() => navigation.navigate('add-reports')}
                     icon={{
                         type: 'material-community',
@@ -33,6 +42,7 @@ export default function Reports(props) {
                     titleStyle={styles.titleBtnStyle}
                     buttonStyle={styles.btnStyle}
                     containerStyle={styles.btnContainer}
+                    disabled={reportAppendEntry === null}
                     onPress={() => navigation.navigate('exit-reports')}
                     icon={{
                         type: 'material-community',
@@ -73,7 +83,8 @@ const styles = StyleSheet.create({
         marginTop: 50
     },
     btnStyle: {
-        backgroundColor: '#00a680',
+        backgroundColor: '#2860A4',
+        color: '#fff'
     },
     btnContainer: {
         width: '70%'

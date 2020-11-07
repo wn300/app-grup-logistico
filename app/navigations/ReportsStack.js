@@ -13,19 +13,41 @@ export default function ReportsStack() {
             <Stack.Screen
                 name="reports"
                 component={Reports}
-                options={{ title: 'Reportes' }} />
+                options={{
+                    title: 'Reportes',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' }
+                }}
+            />
             <Stack.Screen
                 name="add-reports"
                 component={addReports}
-                options={{ title: 'Llegada' }} />
+                options={{
+                    title: 'Llegada',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' },
+                    headerTintColor:'#fff'
+                }}
+            />
             <Stack.Screen
                 name="exit-reports"
                 component={addReports}
-                options={{ title: 'Salida' }} />
+                options={{
+                    title: 'Salida',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' },
+                    headerTintColor:'#fff'
+                }}
+            />
             <Stack.Screen
                 name="incapacity-reports"
                 component={addReports}
-                options={{ title: 'Incapacidad' }} />
+                options={{
+                    title: 'Incapacidad',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' },
+                    headerTintColor:'#fff'
+                }} />
         </Stack.Navigator>
     )
 }

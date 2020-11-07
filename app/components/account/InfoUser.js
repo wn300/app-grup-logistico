@@ -92,7 +92,7 @@ export default function InfoUser(props) {
                     {displayName ? displayName : 'Anónimo'}
                 </Text>
                 <Text>
-                    {email ? email : 'Anónimo'}
+                    {email ? email.split('@')[0] : 'Anónimo'}
                 </Text>
             </View>
         </View>

@@ -5,7 +5,7 @@ import { size, isEmpty } from 'lodash';
 import * as firebase from 'firebase'
 import { useNavigation } from '@react-navigation/native';
 
-import { validateEmail } from '../../utils/validations';
+import { validateNumber } from '../../utils/validations';
 import Loading from '../../components/Loading'
 
 export default function RegisterForm(props) {
@@ -23,9 +23,11 @@ export default function RegisterForm(props) {
             isEmpty(formData.passwordConfirm)
         ) {
             toastRef.current.show('Todos los campos son obligatrios.')
-        } else if (!validateEmail(formData.email)) {
-            toastRef.current.show('El email no es correcto.')
-        } else if (formData.password !== formData.passwordConfirm) {
+        } 
+        else if (!validateNumber(formData.email)) {
+            toastRef.current.show('El numero de cedula es incorrecto.')
+        } 
+        else if (formData.password !== formData.passwordConfirm) {
             toastRef.current.show('Las contrasaeñas tienen que ser iguales.')
         } else if (size(formData.password) < 6) {
             toastRef.current.show('La contrasaeña tienen que ser superior a es caracteres.')
@@ -34,7 +36,7 @@ export default function RegisterForm(props) {
             setLoading(true);
             firebase
                 .auth()
-                .createUserWithEmailAndPassword(formData.email, formData.password)
+                .createUserWithEmailAndPassword(`${formData.email}@whatever.com`, formData.password)
                 .then(response => {
                     setLoading(false);
                     navigation.navigate('account');
@@ -53,13 +55,14 @@ export default function RegisterForm(props) {
     return (
         <View style={styles.formContainer}>
             <Input
-                placeholder='Correo electronico'
+                placeholder='Número de cedula'
                 containerStyle={styles.inputForm}
                 onChange={e => onChange(e, 'email')}
+                keyboardType='numeric'
                 rightIcon={
                     <Icon
                         type='material-community'
-                        name='at'
+                        name='account'
                         iconStyle={styles.iconRight}
                     />
                 }
@@ -129,7 +132,7 @@ const styles = StyleSheet.create({
         width: '95%'
     },
     btnRegister: {
-        backgroundColor: '#00a680'
+        backgroundColor: '#2860A4'
     },
     iconRight: {
         color: '#c1c1c1'

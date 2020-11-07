@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
         textAlign:'center'
     },
     btnRegister: {
-        color: '#00a680',
+        color: '#2860A4',
         fontWeight: 'bold'
     }
 });

@@ -13,16 +13,30 @@ export default function AccountStack() {
             <Stack.Screen
                 name="account"
                 component={Account}
-                options={{ title: 'Cuenta' }} />
+                options={{
+                    title: 'Cuenta',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' }
+                }} />
             <Stack.Screen
                 name='login'
                 component={Login}
-                options={{ title: 'Iniciar sesion' }}
+                options={{
+                    title: 'Iniciar sesion',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' },
+                    headerTintColor:'#fff'
+                }}
             />
             <Stack.Screen
                 name='register'
                 component={Register}
-                options={{ title: 'Registro' }}
+                options={{
+                    title: 'Registro',
+                    headerTitleStyle: { color: '#fff' },
+                    headerStyle: { backgroundColor: '#163458' },
+                    headerTintColor:'#fff'
+                }}
             />
         </Stack.Navigator>
     )

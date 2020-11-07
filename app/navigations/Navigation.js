@@ -15,7 +15,7 @@ export default function Navigation() {
                 initialRouteName='Reports'
                 tabBarOptions={{
                     inactiveTintColor: '#646464',
-                    activeTintColor: '#00a680'
+                    activeTintColor: '#2860A4'
                 }}
                 screenOptions={({ route }) => ({
                     tabBarIcon: ({ color }) => screenOptions(route, color)

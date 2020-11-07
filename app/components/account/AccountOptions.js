@@ -95,27 +95,27 @@ function generateOptions(selectComponent) {
             title: 'Cambiar nombre y apellidos',
             iconType: 'material-community',
             iconNameLeft: 'account-circle',
-            iconColorLeft: '#00a680',
+            iconColorLeft: '#2860A4',
             iconNameRigth: 'chevron-right',
-            iconColorRigth: '#00a680',
+            iconColorRigth: '#2860A4',
             onPress: () => selectComponent('displayName')
         },
         {
             title: 'Cambiar email',
             iconType: 'material-community',
             iconNameLeft: 'at',
-            iconColorLeft: '#00a680',
+            iconColorLeft: '#2860A4',
             iconNameRigth: 'chevron-right',
-            iconColorRigth: '#00a680',
+            iconColorRigth: '#2860A4',
             onPress: () => selectComponent('email')
         },
         {
             title: 'Cambiar contraseña',
             iconType: 'material-community',
             iconNameLeft: 'lock-reset',
-            iconColorLeft: '#00a680',
+            iconColorLeft: '#2860A4',
             iconNameRigth: 'chevron-right',
-            iconColorRigth: '#00a680',
+            iconColorRigth: '#2860A4',
             onPress: () => selectComponent('password')
         }
     ]

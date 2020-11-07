@@ -5,7 +5,7 @@ import { size, isEmpty } from 'lodash';
 import * as firebase from 'firebase';
 import { useNavigation } from '@react-navigation/native';
 
-import { validateEmail } from '../../utils/validations';
+import { validateNumber } from '../../utils/validations';
 import Loading from '../../components/Loading';
 
 
@@ -22,7 +22,7 @@ export default function LoginForm(props) {
             isEmpty(formData.password)
         ) {
             toastRef.current.show('Todos los campos son obligatrios.')
-        } else if (!validateEmail(formData.email)) {
+        } else if (!validateNumber(formData.email)) {
             toastRef.current.show('El email no es correcto.')
         } else if (size(formData.password) < 6) {
             toastRef.current.show('La contrasaeña tienen que ser superior a es caracteres.')
@@ -31,7 +31,7 @@ export default function LoginForm(props) {
             setLoading(true);
             firebase
                 .auth()
-                .signInWithEmailAndPassword(formData.email, formData.password)
+                .signInWithEmailAndPassword(`${formData.email}@whatever.com`, formData.password)
                 .then(resul => {
                     setLoading(false);
                     navigation.navigate('account');
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
         width: '95%'
     },
     btnLogin: {
-        backgroundColor: '#00a680'
+        backgroundColor: '#2860A4'
     },
     iconRight: {
         color: '#c1c1c1'

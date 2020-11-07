@@ -6,16 +6,25 @@ import { map, size, filter } from 'lodash'
 import * as Permissions from 'expo-permissions';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import MapView from 'react-native-maps'
+import uuid from 'random-uuid-v4';
+import firebase from 'firebase/app';
+import 'firebase/storage';
+import 'firebase/firestore';
 
 import Modal from '../Modal'
+import { firebaseApp } from '../../utils/firebase';
 
+const db = firebase.firestore(firebaseApp);
 const WidthScreen = Dimensions.get('window').width;
 
 export default function AddReportForm(props) {
     const {
         toastRef,
-        setIsLoading,
-        navigation
+        setLoading,
+        setLoadingText,
+        navigation,
+        routeParams
     } = props;
 
 
@@ -27,36 +36,111 @@ export default function AddReportForm(props) {
             : 'Incapacidad';
     const [valueType, setValueType] = useState(typeReport);
     const [valueDescription, setValueDescription] = useState('');
-    const [valueTransport, setValueTransport] = useState('');
     const [valueAddres, setValueAddres] = useState('');
     const [imagesSelected, setImagesSelected] = useState([]);
     const [isVisibleMap, setIsVisibleMap] = useState(false);
+    const [locationReport, setLocationReport] = useState(null);
 
+    useEffect(() => {
+        console.log('form', routeParams.params);
+        setLoading(true);
+        setLoadingText('Cargando')
+    }, [true])
 
     const addRestaurant = () => {
-        console.log(imagesSelected);
-        console.log('ok');
-    }
+
+        if ((!valueAddres) && valueType === 'Salida') {
+            toastRef.current.show('Todos los campos son obligatorios');
+        } else if (!valueAddres && valueType !== 'Salida') {
+            toastRef.current.show('Todos los campos son obligatorios');
+        } else if (size(imagesSelected) === 0 && valueType === 'Incapacidad') {
+            toastRef.current.show('La incapacidad debe tener almenos una foto');
+        } else if (!valueDescription && valueType === 'Incapacidad') {
+            toastRef.current.show('Todos los campos son obligatorios.');
+        } else if (!locationReport) {
+            toastRef.current.show('Tiene que guardar la localizacion en el mapa');
+        } else {
+            setLoading(true);
+            setLoadingText('Creando reporte');
+            uploadImageStorage()
+                .then(response => {
+                    db.collection('reports')
+                        .add({
+                            type: valueType,
+                            description: valueDescription,
+                            address: valueAddres,
+                            location: locationReport,
+                            images: response,
+                            status: valueType === 'Llegada' ? true : false,
+                            createAt: new Date(),
+                            createBy: firebase.auth().currentUser.uid,
+                        })
+                        .then((resp) => {
+                            setLoading(false);
+                            navigation.navigate('reports', {
+                                type: valueType,
+                                uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
+                            });
+                        })
+                        .catch(() => {
+                            setLoading(false);
+                            toastRef.current.show('Error al crear el reporte');
+                        })
+                })
+        }
+    };
+
+    const uploadImageStorage = async () => {
+        const imageBlob = []
+
+        await Promise.all(
+            map(imagesSelected, async (image) => {
+                const response = await fetch(image);
+                const blob = await response.blob();
+                const ref = firebase.storage().ref('reports').child(uuid());
+
+                await ref.put(blob).then(async result => {
+                    await firebase
+                        .storage()
+                        .ref(`reports/${result.metadata.name}`)
+                        .getDownloadURL()
+                        .then(photoURL => {
+                            imageBlob.push(photoURL);
+                        });
+                });
+            })
+        )
+
+        return imageBlob;
+    };
 
     return (
         <ScrollView style={styles.ScrollView}>
-            <ImageReport
+            {valueType === 'Incapacidad' && <ImageReport
                 imageReport={imagesSelected[0]}
-            />
+            />}
             <FormAdd
                 valueType={valueType}
+                valueAddres={valueAddres}
                 setValueType={setValueType}
                 setValueDescription={setValueDescription}
-                setValueTransport={setValueTransport}
                 setIsVisibleMap={setIsVisibleMap}
             />
-            <UploadImages
+            {valueType === 'Incapacidad' && <UploadImages
                 toastRef={toastRef}
                 imagesSelected={imagesSelected}
                 setImagesSelected={setImagesSelected}
-            />
+            />}
+            {locationReport && (
+                <View style={styles.viewMap}>
+                    <GoogleMapView
+                        location={locationReport}
+                        whereView='form'
+                    />
+                </View>
+            )}
             <Button
-                title='Crear reporte'
+                title='Enviar'
                 onPress={addRestaurant}
                 buttonStyle={styles.btnAddRestaurant}
             />
@@ -64,6 +148,9 @@ export default function AddReportForm(props) {
                 toastRef={toastRef}
                 isVisibleMap={isVisibleMap}
                 setIsVisibleMap={setIsVisibleMap}
+                setLocationReport={setLocationReport}
+                setValueAddres={setValueAddres}
+                setLoading={setLoading}
             />
         </ScrollView>
     )
@@ -87,12 +174,13 @@ function ImageReport(props) {
 
 function FormAdd(props) {
     const {
+        valueType,
+        valueAddres,
         setValueType,
         setValueDescription,
-        setValueTransport,
-        valueType,
         setIsVisibleMap
     } = props;
+
 
     return (
         <View style={styles.viewForm}>
@@ -122,32 +210,15 @@ function FormAdd(props) {
                 inputContainerStyle={styles.textArea}
                 onChange={e => setValueDescription(e.nativeEvent.text)}
             />
-            <Text
-                style={styles.textTitle}
-            >Transporte</Text>
-            <Input
-                placeholder='Ingrese valor de transporte'
-                inputContainerStyle={styles.input}
-                keyboardType='numeric'
-                onChange={e => setValueTransport(e.nativeEvent.text)}
-                rightIcon={
-                    <Icon
-                        type='material-community'
-                        name='currency-usd'
-                        iconStyle={styles.iconRight}
-                    />
-                }
-            />
             <Input
                 placeholder='Dirección'
                 inputContainerStyle={styles.input}
-                onChange={e => setValueAddrest(e.nativeEvent.text)}
-                disabled
+                value={valueAddres}
                 rightIcon={
                     <Icon
                         type='material-community'
                         name='google-maps'
-                        iconStyle={styles.iconRight}
+                        color={valueAddres ? '#2860A4' : '#c2c2c2'}
                         onPress={() => setIsVisibleMap(true)}
                     />
                 }
@@ -157,7 +228,14 @@ function FormAdd(props) {
 }
 
 function Map(props) {
-    const { toastRef, isVisibleMap, setIsVisibleMap } = props;
+    const {
+        toastRef,
+        isVisibleMap,
+        setIsVisibleMap,
+        setLocationReport,
+        setValueAddres,
+        setLoading
+    } = props;
     const [location, setLocation] = useState(null)
 
     useEffect(() => {
@@ -174,13 +252,32 @@ function Map(props) {
                     3000
                 );
             } else {
-                const location = await Location.getCurrentPositionAsync({});
+                const locationCurrent = await Location.getCurrentPositionAsync({});
                 setLocation({
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
+                    latitude: locationCurrent.coords.latitude,
+                    longitude: locationCurrent.coords.longitude,
                     latitudeDelta: 0.001,
                     longitudeDelta: 0.001
                 })
+                const addres = await Location.reverseGeocodeAsync(
+                    {
+                        latitude: locationCurrent.coords.latitude,
+                        longitude: locationCurrent.coords.longitude,
+                        latitudeDelta: 0.001,
+                        longitudeDelta: 0.001
+                    }
+                );
+
+                const addresString = addres ? `${addres[0].street}, ${addres[0].name}, ${addres[0].city}, ${addres[0].district}, ${addres[0].country}` : '';
+                await setValueAddres(addresString);
+                await setLocationReport({
+                    latitude: locationCurrent.coords.latitude,
+                    longitude: locationCurrent.coords.longitude,
+                    latitudeDelta: 0.001,
+                    longitudeDelta: 0.001
+                });
+
+                setLoading(false);
             }
         })()
     }, [])
@@ -190,8 +287,41 @@ function Map(props) {
             isVisible={isVisibleMap}
             setIsVisible={setIsVisibleMap}
         >
-            <Text>Mapa</Text>
+            <View>
+                {location && (
+                    <GoogleMapView
+                        location={location}
+                        whereView='modal'
+                    />
+                )}
+                <View style={styles.mapBtn}>
+                    <Button
+                        title='Cerrar mapa'
+                        containerStyle={styles.viewBtnMapSave}
+                        buttonStyle={styles.viewMapBtnSave}
+                        onPress={() => setIsVisibleMap(false)}
+                    />
+                </View>
+            </View>
         </Modal>
+    )
+}
+
+function GoogleMapView(props) {
+    const { location, whereView } = props;
+    return (
+        <MapView
+            style={whereView === 'modal' ? styles.mapStyleModal : styles.mapStyle}
+            initialRegion={location}
+            showsUserLocation={true}
+        >
+            <MapView.Marker
+                coordinate={{
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                }}
+            />
+        </MapView>
     )
 }
 
@@ -207,15 +337,15 @@ function UploadImages(props) {
                 3000
             );
         } else {
-            // const result = await ImagePicker.launchCameraAsync({
-            //     allowsEditing: true,
-            //     aspect: [4, 3]
-            // })
-
-            const result = await ImagePicker.launchImageLibraryAsync({
+            const result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
                 aspect: [4, 3]
             })
+
+            // const result = await ImagePicker.launchImageLibraryAsync({
+            //     allowsEditing: true,
+            //     aspect: [4, 3]
+            // })
 
             if (result.cancelled) {
                 toastRef.current.show(
@@ -298,11 +428,8 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: 'bold'
     },
-    iconRight: {
-        color: '#c1c1c1'
-    },
     btnAddRestaurant: {
-        backgroundColor: '#00a680',
+        backgroundColor: '#2860A4',
         margin: 20
     },
     viewImages: {
@@ -328,5 +455,31 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         height: 200,
         marginBottom: 20
+    },
+    mapStyle: {
+        width: '100%',
+        height: '100%'
+    },
+    mapStyleModal: {
+        width: '100%',
+        height: 550
+    },
+    mapBtn: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 10
+    },
+    viewBtnMapSave: {
+        paddingRight: 5
+    },
+    viewMapBtnSave: {
+        backgroundColor: '#2860A4',
+        width: '100%'
+    },
+    viewMap: {
+        alignItems: 'center',
+        height: 200,
+        marginBottom: 10,
+        marginTop: 10
     }
 });
