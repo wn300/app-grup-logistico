@@ -34,7 +34,7 @@ export default function LoginForm(props) {
                 .signInWithEmailAndPassword(`${formData.email}@whatever.com`, formData.password)
                 .then(resul => {
                     setLoading(false);
-                    navigation.navigate('account');
+                    navigation.navigate('reports');
                 })
                 .catch(error => {
                     setLoading(false);
@@ -52,13 +52,13 @@ export default function LoginForm(props) {
     return (
         <View style={styles.formContainer}>
             <Input
-                placeholder='Correo electronico'
+                placeholder='Identificación'
                 containerStyle={styles.inputForm}
                 onChange={e => onChange(e, 'email')}
                 rightIcon={
                     <Icon
                         type='material-community'
-                        name='at'
+                        name='account'
                         iconStyle={styles.iconRight}
                     />
                 }

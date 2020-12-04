@@ -17,14 +17,14 @@ export default function UserGuest() {
                 style={styles.image}
             />
             <Text style={styles.title}>
-                Consulta tu perfil
+               Ingresa a tu App
             </Text>
             <Text style={styles.description}>
-                Inicia sesion para ver tu perfil
+                Inicia sesion para ingresar a tu App
             </Text>
             <View style={styles.viewBtn}>
                 <Button
-                    title='Ver perfil'
+                    title='Iniciar'
                     buttonStyle={styles.btnStyle}
                     containerStyle={styles.btnContainer}
                     onPress={() => navigation.navigate('login')}

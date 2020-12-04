@@ -11,11 +11,14 @@ import uuid from 'random-uuid-v4';
 import firebase from 'firebase/app';
 import 'firebase/storage';
 import 'firebase/firestore';
+import { useNetInfo } from "@react-native-community/netinfo";
 
 import Modal from '../Modal'
 import { firebaseApp } from '../../utils/firebase';
+import { log } from 'react-native-reanimated';
 
 const db = firebase.firestore(firebaseApp);
+
 const WidthScreen = Dimensions.get('window').width;
 
 export default function AddReportForm(props) {
@@ -42,12 +45,11 @@ export default function AddReportForm(props) {
     const [locationReport, setLocationReport] = useState(null);
 
     useEffect(() => {
-        console.log('form', routeParams.params);
         setLoading(true);
         setLoadingText('Cargando')
     }, [true])
 
-    const addRestaurant = () => {
+    const addReport = (useNetInfo) => {
 
         if ((!valueAddres) && valueType === 'Salida') {
             toastRef.current.show('Todos los campos son obligatorios');
@@ -64,28 +66,54 @@ export default function AddReportForm(props) {
             setLoadingText('Creando reporte');
             uploadImageStorage()
                 .then(response => {
-                    db.collection('reports')
-                        .add({
-                            type: valueType,
-                            description: valueDescription,
-                            address: valueAddres,
-                            location: locationReport,
-                            images: response,
-                            status: valueType === 'Llegada' ? true : false,
-                            createAt: new Date(),
-                            createBy: firebase.auth().currentUser.uid,
-                        })
-                        .then((resp) => {
-                            setLoading(false);
-                            navigation.navigate('reports', {
+                    if (useNetInfo.isConnected) {
+                        db.collection('reports')
+                            .add({
                                 type: valueType,
-                                uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
+                                description: valueDescription,
+                                address: valueAddres,
+                                location: locationReport,
+                                images: response,
+                                status: valueType === 'Llegada' ? true : false,
+                                createAt: new Date(),
+                                createBy: firebase.auth().currentUser.uid,
+                            })
+                            .then((resp) => {
+                                setLoading(false);
+                                navigation.navigate('reports', {
+                                    type: valueType,
+                                    uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
+                                });
+                            })
+                            .catch(() => {
+                                setLoading(false);
+                                toastRef.current.show('Error al crear el reporte');
+                            })
+                    } else {
+                        db.collection('reports')
+                            .add({
+                                type: valueType,
+                                description: valueDescription,
+                                address: valueAddres,
+                                location: locationReport,
+                                images: response,
+                                status: valueType === 'Llegada' ? true : false,
+                                createAt: new Date(),
+                                createBy: firebase.auth().currentUser.uid,
+                            }).then((resp) => {
+                               Alert.alert('Un reporte se guardo exitosamente.')
+                            })
+                            .catch(() => {
+                                Alert.alert('Error al guardar reporte.')
                             });
-                        })
-                        .catch(() => {
-                            setLoading(false);
-                            toastRef.current.show('Error al crear el reporte');
-                        })
+
+                        setLoading(false);
+                        navigation.navigate('reports', {
+                            type: valueType,
+                            uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
+                        });
+                    }
+
                 })
         }
     };
@@ -113,8 +141,9 @@ export default function AddReportForm(props) {
 
         return imageBlob;
     };
-
+    const netInfo = useNetInfo();
     return (
+
         <ScrollView style={styles.ScrollView}>
             {valueType === 'Incapacidad' && <ImageReport
                 imageReport={imagesSelected[0]}
@@ -131,7 +160,7 @@ export default function AddReportForm(props) {
                 imagesSelected={imagesSelected}
                 setImagesSelected={setImagesSelected}
             />}
-            {locationReport && (
+            {(locationReport && netInfo.isConnected) && (
                 <View style={styles.viewMap}>
                     <GoogleMapView
                         location={locationReport}
@@ -141,7 +170,7 @@ export default function AddReportForm(props) {
             )}
             <Button
                 title='Enviar'
-                onPress={addRestaurant}
+                onPress={() => addReport(netInfo)}
                 buttonStyle={styles.btnAddRestaurant}
             />
             <Map
@@ -237,7 +266,9 @@ function Map(props) {
         setLoading
     } = props;
     const [location, setLocation] = useState(null)
-
+    
+    const netInfo = useNetInfo();
+    
     useEffect(() => {
         (async () => {
             const resultPermissions = await Permissions.askAsync(
@@ -259,16 +290,16 @@ function Map(props) {
                     latitudeDelta: 0.001,
                     longitudeDelta: 0.001
                 })
-                const addres = await Location.reverseGeocodeAsync(
+                const addres = netInfo.isConnected ? await Location.reverseGeocodeAsync(
                     {
                         latitude: locationCurrent.coords.latitude,
                         longitude: locationCurrent.coords.longitude,
                         latitudeDelta: 0.001,
                         longitudeDelta: 0.001
                     }
-                );
+                ) : false;
 
-                const addresString = addres ? `${addres[0].street}, ${addres[0].name}, ${addres[0].city}, ${addres[0].district}, ${addres[0].country}` : '';
+                const addresString = addres ? `${addres[0].street}, ${addres[0].name}, ${addres[0].city}, ${addres[0].district}, ${addres[0].country}` : 'Modo offline no detecta dirección';
                 await setValueAddres(addresString);
                 await setLocationReport({
                     latitude: locationCurrent.coords.latitude,
@@ -280,7 +311,7 @@ function Map(props) {
                 setLoading(false);
             }
         })()
-    }, [])
+    }, [netInfo.isConnected])
 
     return (
         <Modal
@@ -288,7 +319,7 @@ function Map(props) {
             setIsVisible={setIsVisibleMap}
         >
             <View>
-                {location && (
+                {(location && netInfo.isConnected) && (
                     <GoogleMapView
                         location={location}
                         whereView='modal'
