@@ -77,6 +77,7 @@ export default function AddReportForm(props) {
                                 status: valueType === 'Llegada' ? true : false,
                                 createAt: new Date(),
                                 createBy: firebase.auth().currentUser.uid,
+                                email: firebase.auth().currentUser.email
                             })
                             .then((resp) => {
                                 setLoading(false);
@@ -100,6 +101,7 @@ export default function AddReportForm(props) {
                                 status: valueType === 'Llegada' ? true : false,
                                 createAt: new Date(),
                                 createBy: firebase.auth().currentUser.uid,
+                                email: firebase.auth().currentUser.email
                             }).then((resp) => {
                                Alert.alert('Un reporte se guardo exitosamente.')
                             })
