@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Dimensions } from 'react-native';
 import { Icon, Avatar, Image, Input, Button, Text } from 'react-native-elements';
 import { useRoute } from '@react-navigation/native';
-import { map, size, filter } from 'lodash'
+import { map, size, filter, orderBy, clone } from 'lodash'
+import { useNetInfo } from "@react-native-community/netinfo";
 import * as Permissions from 'expo-permissions';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import moment from "moment";
 import MapView from 'react-native-maps'
 import uuid from 'random-uuid-v4';
 import firebase from 'firebase/app';
 import 'firebase/storage';
 import 'firebase/firestore';
-import { useNetInfo } from "@react-native-community/netinfo";
 
 import Modal from '../Modal'
 import { firebaseApp } from '../../utils/firebase';
@@ -50,7 +51,6 @@ export default function AddReportForm(props) {
     }, [true])
 
     const addReport = (useNetInfo) => {
-
         if ((!valueAddres) && valueType === 'Salida') {
             toastRef.current.show('Todos los campos son obligatorios');
         } else if (!valueAddres && valueType !== 'Salida') {
@@ -66,44 +66,164 @@ export default function AddReportForm(props) {
             setLoadingText('Creando reporte');
             uploadImageStorage()
                 .then(response => {
+                    const objectSave = {
+                        type: valueType,
+                        description: valueDescription,
+                        address: valueAddres,
+                        location: locationReport,
+                        images: response,
+                        status: valueType === 'Llegada' ? true : false,
+                        date: new Date(),
+                        createAt: new Date(),
+                        createBy: firebase.auth().currentUser.uid,
+                        email: firebase.auth().currentUser.email
+                    }
                     if (useNetInfo.isConnected) {
                         db.collection('reports')
-                            .add({
-                                type: valueType,
-                                description: valueDescription,
-                                address: valueAddres,
-                                location: locationReport,
-                                images: response,
-                                status: valueType === 'Llegada' ? true : false,
-                                createAt: new Date(),
-                                createBy: firebase.auth().currentUser.uid,
-                                email: firebase.auth().currentUser.email
-                            })
-                            .then((resp) => {
+                            .add(objectSave)
+                            .then(async (resp) => {
+                                // console.log(objectSave.date, moment(objectSave.date, 'DD/MM/YYYY', true).format());
+                                const onlyDateNow = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+                                const startDate = moment(onlyDateNow).toDate();
+                                const endDate = moment(onlyDateNow).add(23, 'hours').add(59, 'minutes').add(59, 'seconds').toDate();
+
+                                const people = await db.collection('people')
+                                    .where('identification', '==', parseFloat(objectSave.email.split('@')[0]))
+                                    .get()
+
+                                let peopleArray = [];
+
+                                people.forEach(doc => {
+                                    peopleArray
+                                        .push({
+                                            id: doc.id,
+                                            ...doc.data()
+                                        })
+                                });
+
+                                const programing = await db.collection('programming')
+                                    .where('date', '<=', endDate).where('date', '>=', startDate)
+                                    .get()
+
+                                let programingArray = [];
+
+                                programing.forEach(doc => {
+                                    programingArray
+                                        .push({
+                                            id: doc.id,
+                                            ...doc.data()
+                                        })
+                                });
+
+                                if (programingArray.length > 0 && peopleArray[0].position === 'Supernumerario') {
+
+                                    const worksCenter = await db.collection('workCenter').get()
+
+                                    let worksCenterArray = [];
+
+                                    worksCenter.forEach(doc => {
+                                        worksCenterArray
+                                            .push({
+                                                id: doc.id,
+                                                ...doc.data()
+                                            })
+                                    });
+
+                                    const programmingsByIdentification = programingArray.filter(filt => filt.identification === parseFloat(objectSave.email.split('@')[0]));
+                                    if (objectSave.type === 'Llegada') {
+                                        const arrayToDefine = [];
+                                        programmingsByIdentification.forEach(programmingByIdentification => {
+                                            if (programmingByIdentification.reportStart === undefined) {
+                                                const workCenter = worksCenterArray.filter(filt => filt.operationCode === programmingByIdentification.operationCode)[0];
+                                                const x1 = workCenter.latitude;
+                                                const y1 = workCenter.longitude;
+                                                const x2 = objectSave.location.latitude;
+                                                const y2 = objectSave.location.longitude;
+
+                                                const km = getKilometros(x1, y1, x2, y2);
+
+                                                let position = 'Fuera de rango';
+                                                if ((parseFloat(km) * 1000) <= 300) {
+                                                    position = 'Dentro del rango';
+                                                }
+
+                                                objectSave.location.message = position;
+
+                                                const diffTime = diffHours(programmingByIdentification.date.toDate(), objectSave.date, objectSave.type);
+                                                const newObject = {
+                                                    diffTime: parseFloat(`${diffTime[0]}${diffTime[1]}`),
+                                                    ...programmingByIdentification,
+                                                    reportStart: {
+                                                        data: {
+                                                            ...objectSave,
+                                                            message: diffTime[0] === 0 && diffTime[1] <= 15 ? 'A tiempo' : 'Fuera de rango'
+                                                        },
+                                                        id: resp.id
+                                                    },
+                                                    reportEnd: {
+                                                        data: {
+                                                            type: '',
+                                                            description: '',
+                                                            address: '',
+                                                            location: {},
+                                                            images: [],
+                                                            status: '',
+                                                            date: '',
+                                                            createAt: '',
+                                                            createBy: '',
+                                                            email: '',
+                                                            message: ''
+                                                        },
+                                                        id: ''
+                                                    }
+                                                }
+
+                                                arrayToDefine.push(newObject)
+                                            }
+                                        })
+
+                                        if (arrayToDefine.length > 0) {
+                                            const programmingReportSave = clone(orderBy(arrayToDefine, ['diffTime'], ['asc'])[0]);
+                                            const resAddProgrammingReport = await db.collection('reportProgramming').add(programmingReportSave);
+
+                                            const programmingUpdate = {
+                                                applicantIdentification: programmingReportSave.applicantIdentification,
+                                                applicantName: programmingReportSave.applicantName,
+                                                date: programmingReportSave.date,
+                                                identification: programmingReportSave.identification,
+                                                name: programmingReportSave.name,
+                                                observation: programmingReportSave.observation,
+                                                operationCode: programmingReportSave.operationCode,
+                                                operationName: programmingReportSave.operationName,
+                                                transport: programmingReportSave.transport,
+                                                workplaceCode: programmingReportSave.workplaceCode,
+                                                workplaceName: programmingReportSave.workplaceName,
+                                                reportStart: resp.id,
+                                                programmingReport: resAddProgrammingReport.id,
+                                            }
+
+                                            await db.collection('programming').doc(programmingReportSave.id).update(programmingUpdate);
+                                        }
+                                    }
+                                    if (objectSave.type === 'Salida') {
+                                        // console.log(programmingsByIdentification, '3');
+                                    }
+                                }
+
                                 setLoading(false);
                                 navigation.navigate('reports', {
                                     type: valueType,
                                     uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
                                 });
                             })
-                            .catch(() => {
-                                setLoading(false);
-                                toastRef.current.show('Error al crear el reporte');
-                            })
+                        // .catch(() => {
+                        //     setLoading(false);
+                        //     toastRef.current.show('Error al crear el reporte');
+                        // })
                     } else {
                         db.collection('reports')
-                            .add({
-                                type: valueType,
-                                description: valueDescription,
-                                address: valueAddres,
-                                location: locationReport,
-                                images: response,
-                                status: valueType === 'Llegada' ? true : false,
-                                createAt: new Date(),
-                                createBy: firebase.auth().currentUser.uid,
-                                email: firebase.auth().currentUser.email
-                            }).then((resp) => {
-                               Alert.alert('Un reporte se guardo exitosamente.')
+                            .add(objectSave).then((resp) => {
+                                Alert.alert('Un reporte se guardo exitosamente.')
                             })
                             .catch(() => {
                                 Alert.alert('Error al guardar reporte.')
@@ -268,9 +388,9 @@ function Map(props) {
         setLoading
     } = props;
     const [location, setLocation] = useState(null)
-    
+
     const netInfo = useNetInfo();
-    
+
     useEffect(() => {
         (async () => {
             const resultPermissions = await Permissions.askAsync(
@@ -414,6 +534,8 @@ function UploadImages(props) {
         )
     }
 
+
+
     return (
         <View style={styles.viewImages}>
             {size(imagesSelected) < 4 && (
@@ -435,6 +557,42 @@ function UploadImages(props) {
             ))}
         </View>
     )
+}
+
+function diffHours(startDate, endDate, type) {
+    const startTime = moment(startDate, 'HH:mm:ss');
+    const endTime = moment(endDate, 'HH:mm:ss');
+
+    let hours = 0;
+    let minutes = '';
+    // calculate total duration
+    if (type !== 'Salida') {
+        if (startDate < endDate) {
+            hours = endTime.diff(startTime, 'hours');
+            minutes = moment.utc(endTime.diff(startTime)).format('mm');
+        } else {
+            hours = startTime.diff(endTime, 'hours');
+            minutes = moment.utc(startTime.diff(endTime)).format('mm');
+        }
+    } else {
+        hours = endTime.diff(startTime, 'hours');
+        minutes = moment.utc(endTime.diff(startTime)).format('mm');
+    }
+
+    return [hours, minutes];
+}
+
+function getKilometros(lat1, lon1, lat2, lon2) {
+    const rad = (x) => x * Math.PI / 180;
+    // Radio de la tierra en km
+    const R = 6378.137;
+    const dLat = rad(lat2 - lat1);
+    const dLong = rad(lon2 - lon1);
+    // tslint:disable-next-line:max-line-length
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLong / 2) * Math.sin(dLong / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+    return d.toFixed(3);
 }
 
 const styles = StyleSheet.create({
