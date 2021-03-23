@@ -34,7 +34,6 @@ export default function Reports(props) {
                     titleStyle={styles.titleBtnStyle}
                     buttonStyle={styles.btnStyle}
                     containerStyle={styles.btnContainer}
-                    disabled={reportAppendEntry !== null}
                     onPress={() => navigation.navigate('add-reports')}
                     icon={{
                         type: 'material-community',
@@ -50,7 +49,6 @@ export default function Reports(props) {
                     titleStyle={styles.titleBtnStyle}
                     buttonStyle={styles.btnStyle}
                     containerStyle={styles.btnContainer}
-                    disabled={reportAppendEntry === null}
                     onPress={() => navigation.navigate('exit-reports')}
                     icon={{
                         type: 'material-community',

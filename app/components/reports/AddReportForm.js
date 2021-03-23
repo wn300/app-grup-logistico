@@ -82,147 +82,21 @@ export default function AddReportForm(props) {
                         db.collection('reports')
                             .add(objectSave)
                             .then(async (resp) => {
-                                // console.log(objectSave.date, moment(objectSave.date, 'DD/MM/YYYY', true).format());
-                                const onlyDateNow = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-                                const startDate = moment(onlyDateNow).toDate();
-                                const endDate = moment(onlyDateNow).add(23, 'hours').add(59, 'minutes').add(59, 'seconds').toDate();
-
-                                const people = await db.collection('people')
-                                    .where('identification', '==', parseFloat(objectSave.email.split('@')[0]))
-                                    .get()
-
-                                let peopleArray = [];
-
-                                people.forEach(doc => {
-                                    peopleArray
-                                        .push({
-                                            id: doc.id,
-                                            ...doc.data()
-                                        })
-                                });
-
-                                const programing = await db.collection('programming')
-                                    .where('date', '<=', endDate).where('date', '>=', startDate)
-                                    .get()
-
-                                let programingArray = [];
-
-                                programing.forEach(doc => {
-                                    programingArray
-                                        .push({
-                                            id: doc.id,
-                                            ...doc.data()
-                                        })
-                                });
-
-                                if (programingArray.length > 0 && peopleArray[0].position === 'Supernumerario') {
-
-                                    const worksCenter = await db.collection('workCenter').get()
-
-                                    let worksCenterArray = [];
-
-                                    worksCenter.forEach(doc => {
-                                        worksCenterArray
-                                            .push({
-                                                id: doc.id,
-                                                ...doc.data()
-                                            })
-                                    });
-
-                                    const programmingsByIdentification = programingArray.filter(filt => filt.identification === parseFloat(objectSave.email.split('@')[0]));
-                                    if (objectSave.type === 'Llegada') {
-                                        const arrayToDefine = [];
-                                        programmingsByIdentification.forEach(programmingByIdentification => {
-                                            if (programmingByIdentification.reportStart === undefined) {
-                                                const workCenter = worksCenterArray.filter(filt => filt.operationCode === programmingByIdentification.operationCode)[0];
-                                                const x1 = workCenter.latitude;
-                                                const y1 = workCenter.longitude;
-                                                const x2 = objectSave.location.latitude;
-                                                const y2 = objectSave.location.longitude;
-
-                                                const km = getKilometros(x1, y1, x2, y2);
-
-                                                let position = 'Fuera de rango';
-                                                if ((parseFloat(km) * 1000) <= 300) {
-                                                    position = 'Dentro del rango';
-                                                }
-
-                                                objectSave.location.message = position;
-
-                                                const diffTime = diffHours(programmingByIdentification.date.toDate(), objectSave.date, objectSave.type);
-                                                const newObject = {
-                                                    diffTime: parseFloat(`${diffTime[0]}${diffTime[1]}`),
-                                                    ...programmingByIdentification,
-                                                    reportStart: {
-                                                        data: {
-                                                            ...objectSave,
-                                                            message: diffTime[0] === 0 && diffTime[1] <= 15 ? 'A tiempo' : 'Fuera de rango'
-                                                        },
-                                                        id: resp.id
-                                                    },
-                                                    reportEnd: {
-                                                        data: {
-                                                            type: '',
-                                                            description: '',
-                                                            address: '',
-                                                            location: {},
-                                                            images: [],
-                                                            status: '',
-                                                            date: '',
-                                                            createAt: '',
-                                                            createBy: '',
-                                                            email: '',
-                                                            message: ''
-                                                        },
-                                                        id: ''
-                                                    }
-                                                }
-
-                                                arrayToDefine.push(newObject)
-                                            }
-                                        })
-
-                                        if (arrayToDefine.length > 0) {
-                                            const programmingReportSave = clone(orderBy(arrayToDefine, ['diffTime'], ['asc'])[0]);
-                                            const resAddProgrammingReport = await db.collection('reportProgramming').add(programmingReportSave);
-
-                                            const programmingUpdate = {
-                                                applicantIdentification: programmingReportSave.applicantIdentification,
-                                                applicantName: programmingReportSave.applicantName,
-                                                date: programmingReportSave.date,
-                                                identification: programmingReportSave.identification,
-                                                name: programmingReportSave.name,
-                                                observation: programmingReportSave.observation,
-                                                operationCode: programmingReportSave.operationCode,
-                                                operationName: programmingReportSave.operationName,
-                                                transport: programmingReportSave.transport,
-                                                workplaceCode: programmingReportSave.workplaceCode,
-                                                workplaceName: programmingReportSave.workplaceName,
-                                                reportStart: resp.id,
-                                                programmingReport: resAddProgrammingReport.id,
-                                            }
-
-                                            await db.collection('programming').doc(programmingReportSave.id).update(programmingUpdate);
-                                        }
-                                    }
-                                    if (objectSave.type === 'Salida') {
-                                        // console.log(programmingsByIdentification, '3');
-                                    }
-                                }
-
+                                await createReport(objectSave, resp);
                                 setLoading(false);
                                 navigation.navigate('reports', {
                                     type: valueType,
                                     uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
                                 });
                             })
-                        // .catch(() => {
-                        //     setLoading(false);
-                        //     toastRef.current.show('Error al crear el reporte');
-                        // })
+                            .catch(() => {
+                                setLoading(false);
+                                toastRef.current.show('Error al crear el reporte');
+                            })
                     } else {
                         db.collection('reports')
-                            .add(objectSave).then((resp) => {
+                            .add(objectSave).then(async (resp) => {
+                                await createReport(objectSave, resp);
                                 Alert.alert('Un reporte se guardo exitosamente.')
                             })
                             .catch(() => {
@@ -305,6 +179,173 @@ export default function AddReportForm(props) {
             />
         </ScrollView>
     )
+
+    async function createReport(objectSave, resp) {
+        const onlyDateNow = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+        const startDate = moment(onlyDateNow).toDate();
+        const endDate = moment(onlyDateNow).add(23, 'hours').add(59, 'minutes').add(59, 'seconds').toDate();
+
+        const people = await db.collection('people')
+            .where('identification', '==', parseFloat(objectSave.email.split('@')[0]))
+            .get();
+
+        let peopleArray = [];
+
+        people.forEach(doc => {
+            peopleArray
+                .push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+        });
+
+        const programing = await db.collection('programming')
+            .where('date', '<=', endDate).where('date', '>=', startDate)
+            .get();
+
+        let programingArray = [];
+
+        programing.forEach(doc => {
+            programingArray
+                .push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+        });
+
+        if (programingArray.length > 0 && peopleArray[0].position === 'Supernumerario') {
+
+            const worksCenter = await db.collection('workCenter').get();
+
+            let worksCenterArray = [];
+
+            worksCenter.forEach(doc => {
+                worksCenterArray
+                    .push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+            });
+
+            const programmingsByIdentification = programingArray.filter(filt => filt.identification === parseFloat(objectSave.email.split('@')[0]));
+            if (objectSave.type === 'Llegada') {
+                const arrayToDefine = [];
+                programmingsByIdentification.forEach(programmingByIdentification => {
+                    if (programmingByIdentification.reportStart === undefined) {
+                        const workCenter = worksCenterArray.filter(filt => filt.operationCode === programmingByIdentification.operationCode)[0];
+                        const x1 = workCenter.latitude;
+                        const y1 = workCenter.longitude;
+                        const x2 = objectSave.location.latitude;
+                        const y2 = objectSave.location.longitude;
+
+                        const km = getKilometros(x1, y1, x2, y2);
+
+                        let position = 'Fuera de rango';
+                        if ((parseFloat(km) * 1000) <= 300) {
+                            position = 'Dentro del rango';
+                        }
+
+                        objectSave.location.message = position;
+
+                        const diffTime = diffHours(programmingByIdentification.date.toDate(), objectSave.date, objectSave.type);
+                        const newObject = {
+                            diffTime: parseFloat(`${diffTime[0]}${diffTime[1]}`),
+                            ...programmingByIdentification,
+                            reportStart: {
+                                data: {
+                                    ...objectSave,
+                                    message: diffTime[0] === 0 && diffTime[1] <= 15 ? 'A tiempo' : 'Fuera de rango'
+                                },
+                                id: resp.id
+                            },
+                            reportEnd: {
+                                data: {
+                                    type: '',
+                                    description: '',
+                                    address: '',
+                                    location: {},
+                                    images: [],
+                                    status: '',
+                                    date: '',
+                                    createAt: '',
+                                    createBy: '',
+                                    email: '',
+                                    message: ''
+                                },
+                                id: ''
+                            }
+                        };
+
+                        arrayToDefine.push(newObject);
+                    }
+                });
+
+                if (arrayToDefine.length > 0) {
+                    const programmingReportSave = clone(orderBy(arrayToDefine, ['diffTime'], ['asc'])[0]);
+                    const resAddProgrammingReport = await db.collection('reportProgramming').add(programmingReportSave);
+
+                    await db.collection('programming').doc(programmingReportSave.id).update(
+                        {
+                            reportStart: resp.id,
+                            programmingReport: resAddProgrammingReport.id,
+                        }
+                    );
+                }
+            }
+            if (objectSave.type === 'Salida') {
+                const arrayToDefine = [];
+                programmingsByIdentification.forEach(programmingByIdentification => {
+                    if (programmingByIdentification.reportStart !== undefined && programmingByIdentification.reportEnd === undefined) {
+                        const workCenter = worksCenterArray.filter(filt => filt.operationCode === programmingByIdentification.operationCode)[0];
+                        const x1 = workCenter.latitude;
+                        const y1 = workCenter.longitude;
+                        const x2 = objectSave.location.latitude;
+                        const y2 = objectSave.location.longitude;
+
+                        const km = getKilometros(x1, y1, x2, y2);
+
+                        let position = 'Fuera de rango';
+                        if ((parseFloat(km) * 1000) <= 300) {
+                            position = 'Dentro del rango';
+                        }
+
+                        objectSave.location.message = position;
+
+                        const diffTime = diffHours(programmingByIdentification.date.toDate(), objectSave.date, objectSave.type);
+                        const newObject = {
+                            diffTime: parseFloat(`${diffTime[0]}${diffTime[1]}`),
+                            ...programmingByIdentification,
+                            reportEnd: {
+                                data: {
+                                    ...objectSave,
+                                    message: diffTime[0] <= 12 && diffTime[0] > 6 ? 'A tiempo' : 'Fuera de rango'
+                                },
+                                id: resp.id
+                            }
+                        };
+
+                        arrayToDefine.push(newObject);
+                    }
+                });
+
+                if (arrayToDefine.length > 0) {
+                    const programmingReportSave = clone(orderBy(arrayToDefine, ['diffTime'], ['asc'])[0]);
+                    await db.collection('reportProgramming')
+                        .doc(programmingReportSave.programmingReport)
+                        .update({ reportEnd: programmingReportSave.reportEnd });
+
+                    await db.collection('programming').doc(programmingReportSave.id).update(
+                        {
+                            reportStart: programmingReportSave.reportStart,
+                            reportEnd: resp.id,
+                            programmingReport: programmingReportSave.programmingReport,
+                        }
+                    );
+                }
+            }
+        }
+
+    }
 }
 
 function ImageReport(props) {
