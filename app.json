@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app-logistica",
-    "slug": "app-logistica",
+    "name": "appsistencia",
+    "slug": "appsistencia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

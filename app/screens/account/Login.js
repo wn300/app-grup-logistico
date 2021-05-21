@@ -17,7 +17,6 @@ export default function Login() {
             />
             <View style={styles.viewContainer}>
                 <LoginForm toastRef={toastRef}/>
-                <CreateAccount />
             </View>
             <Toast 
             ref={toastRef} 

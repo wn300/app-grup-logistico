@@ -78,22 +78,22 @@ export default function AddReportForm(props) {
                         createBy: firebase.auth().currentUser.uid,
                         email: firebase.auth().currentUser.email
                     }
-                    if (useNetInfo.isConnected) {
-                        db.collection('reports')
-                            .add(objectSave)
-                            .then(async (resp) => {
-                                await createReport(objectSave, resp);
-                                setLoading(false);
-                                navigation.navigate('reports', {
-                                    type: valueType,
-                                    uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
-                                });
-                            })
-                            .catch(() => {
-                                setLoading(false);
-                                toastRef.current.show('Error al crear el reporte');
-                            })
-                    } else {
+                    // if (useNetInfo.isConnected) {
+                    //     db.collection('reports')
+                    //         .add(objectSave)
+                    //         .then(async (resp) => {
+                    //             await createReport(objectSave, resp);
+                    //             setLoading(false);
+                    //             navigation.navigate('reports', {
+                    //                 type: valueType,
+                    //                 uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
+                    //             });
+                    //         })
+                    //         .catch(() => {
+                    //             setLoading(false);
+                    //             toastRef.current.show('Error al crear el reporte');
+                    //         })
+                    // } else {
                         db.collection('reports')
                             .add(objectSave).then(async (resp) => {
                                 await createReport(objectSave, resp);
@@ -108,7 +108,7 @@ export default function AddReportForm(props) {
                             type: valueType,
                             uid: valueType === 'Salida' ? null : 'Inicio  de proceso',
                         });
-                    }
+                    // }
 
                 })
         }
@@ -213,7 +213,7 @@ export default function AddReportForm(props) {
                 });
         });
 
-        if (programingArray.length > 0 && peopleArray[0].position === 'Supernumerario') {
+        if (programingArray.length > 0 && (peopleArray[0].position === 'Supernumerario' || peopleArray[0].position === 'Auxiliar Operativo')) {
 
             const worksCenter = await db.collection('workCenter').get();
 
@@ -453,16 +453,8 @@ function Map(props) {
                     latitudeDelta: 0.001,
                     longitudeDelta: 0.001
                 })
-                const addres = netInfo.isConnected ? await Location.reverseGeocodeAsync(
-                    {
-                        latitude: locationCurrent.coords.latitude,
-                        longitude: locationCurrent.coords.longitude,
-                        latitudeDelta: 0.001,
-                        longitudeDelta: 0.001
-                    }
-                ) : false;
-
-                const addresString = addres ? `${addres[0].street}, ${addres[0].name}, ${addres[0].city}, ${addres[0].district}, ${addres[0].country}` : 'Modo offline no detecta dirección';
+                
+                const addresString = `lat: ${locationCurrent.coords.latitude}  long: ${locationCurrent.coords.longitude}`;
                 await setValueAddres(addresString);
                 await setLocationReport({
                     latitude: locationCurrent.coords.latitude,
